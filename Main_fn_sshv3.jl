@@ -16,6 +16,7 @@
  Pkg.add("NLsolve")
  Pkg.add("StableRNGs")
  Pkg.add("SharedArrays")
+ Pkg.add("Primes")
 
 
 using Distributed
