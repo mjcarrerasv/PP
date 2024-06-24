@@ -7,17 +7,26 @@
 # Code written as a funciton of n 
 
 # Algorith where the dynamic choice is solved via function (see Main_mat) for grid 
-# using Pkg; Pkg.add(")
+ using Pkg; Pkg.add("Interpolations")
+ Pkg.add("Optim")
+ Pkg.add("Random")
+ Pkg.add("Statistics")
+ Pkg.add("StatsFun")
+ Pkg.add("Distributions")
+ Pkg.add("NLsolve")
+ Pkg.add("StableRNGs")
+ Pkg.add("SharedArrays")
+
 
 using Distributed
 @everywhere using Interpolations, Optim, Random
 @everywhere using Statistics
-using JLD2
+#using JLD2
 @everywhere using Distributions
 @everywhere using NLsolve
-using FileIO
+#using FileIO
 using StableRNGs
-using BenchmarkTools
+#using BenchmarkTools
 #using Base.Threads
 using SharedArrays
 addprocs(6) 
@@ -39,7 +48,7 @@ rng = StableRNG(2904)
 @everywhere sfgridv = collect(range(1e-10; length = sgridsizev, stop = sfgridmaxv))
 
 @everywhere pdv = 1.0
-@everywhere pfv = 1.0/1.2 #0.1
+@everywhere pfv = 1.0 #/1.2 #0.1
 
 # shocks
 include("lam.jl")
@@ -100,9 +109,9 @@ include("2Simulate_v2.jl")
 # 1. initial point
 nu_max = maximum(shockgridv[:,1])
 X = unconstrained_fn( nu_max, pdv, pfv, parametersv)
-sdgridmaxv = X[5]*(1.4)
+sdgridmaxv = X[5]*(2.0)
 sdgridv = collect(range(1e-10; length = sgridsizev, stop = sdgridmaxv))
-sfgridmaxv = X[4]*(1.4)
+sfgridmaxv = X[4]*(2.0)
 sfgridv = collect(range(1e-10; length = sgridsizev, stop = sfgridmaxv))
 parametersv = [betav, epsiv, sigmav, deltav, thv, sgridsizev, shockgridsizev];
 
@@ -115,6 +124,7 @@ parametersv = [betav, epsiv, sigmav, deltav, thv, sgridsizev, shockgridsizev];
 @time PsdMC_1d, PsfMC_1d, PpMC_1d, PyMC_1d, PxMC_1d, PxfMC_1d, PxdMC_1d, PndMC_1d, PnfMC_1d, PcaseMC_1d = 
 simulation(Pnd_1d, Pnf_1d, pdv, pfv, Nfirmsv, Tfirmsv, parametersv, shockgridv, sdgridv, sfgridv, shockMC_1d, PsdMC_1d, PsfMC_1d);
 
+#=
 ##############################################################################################################################
 # 2. pf change only 
 @everywhere pfv = 1.0 #1.0/1.2 #0.1
@@ -188,16 +198,16 @@ shockgridv[:,2] .= lamd2v;                     # Second column: domestic deliver
 shockgridv[:,3] .= lamf2v;   
 
 @everywhere pfv = 1.0/1.2 #0.1
-
-a1 = count(<=(0.0), PcaseMC_1[:, Tfirmsv])/Nfirmsv
+=#
+a1 = count(<=(0.0), PcaseMC_1d[:, Tfirmsv])/Nfirmsv
 nu_mean = mean(shockgridv[:,2])
 a2 = X_mean = unconstrained_fn( nu_mean, pdv, pfv, parametersv)
-a3 = mean(PyMC_1[:, Tfirmsv])
-a4 = mean(PpMC_1[:, Tfirmsv])
+a3 = mean(PyMC_1d[:, Tfirmsv])
+a4 = mean(PpMC_1d[:, Tfirmsv])
 
-a5 = mean(PndMC_1[:, Tfirmsv])
-a6 = mean(PnfMC_1[:, Tfirmsv])
-a7 = pfv.*mean(PnfMC_1[:, Tfirmsv])
+a5 = mean(PndMC_1d[:, Tfirmsv])
+a6 = mean(PnfMC_1d[:, Tfirmsv])
+a7 = pfv.*mean(PnfMC_1d[:, Tfirmsv])
 
 xf_sale = ones(Nfirmsv)*(-10.0)
 xf_y = ones(Nfirmsv)*(-10.0)
@@ -206,21 +216,21 @@ xd_sale = ones(Nfirmsv)*(-10.0)
 xd_y = ones(Nfirmsv)*(-10.0)
 xd_inp = ones(Nfirmsv)*(-10.0)
 
-xf_sale .= pfv.*PxfMC_1[:, Tfirmsv]./(PyMC_1[:, Tfirmsv].*PpMC_1[:, Tfirmsv])
-xf_y .= PxfMC_1[:, Tfirmsv]./(PyMC_1[:, Tfirmsv])
-xf_inp .= pfv.*PxfMC_1[:, Tfirmsv]./(pdv.*PxdMC_1[:, Tfirmsv] .+ pfv.*PxfMC_1[:, Tfirmsv])
+xf_sale .= pfv.*PxfMC_1d[:, Tfirmsv]./(PyMC_1d[:, Tfirmsv].*PpMC_1d[:, Tfirmsv])
+xf_y .= PxfMC_1d[:, Tfirmsv]./(PyMC_1d[:, Tfirmsv])
+xf_inp .= pfv.*PxfMC_1d[:, Tfirmsv]./(pdv.*PxdMC_1d[:, Tfirmsv] .+ pfv.*PxfMC_1d[:, Tfirmsv])
 
-xd_sale .= pdv.*PxdMC_1[:, Tfirmsv]./(PyMC_1[:, Tfirmsv].*PpMC_1[:, Tfirmsv])
-xd_y .= PxdMC_1[:, Tfirmsv]./(PyMC_1[:, Tfirmsv])
-xd_inp .= pdv.*PxdMC_1[:, Tfirmsv]./(pdv.*PxdMC_1[:, Tfirmsv] .+ pfv.*PxfMC_1[:, Tfirmsv])
+xd_sale .= pdv.*PxdMC_1d[:, Tfirmsv]./(PyMC_1d[:, Tfirmsv].*PpMC_1d[:, Tfirmsv])
+xd_y .= PxdMC_1d[:, Tfirmsv]./(PyMC_1d[:, Tfirmsv])
+xd_inp .= pdv.*PxdMC_1d[:, Tfirmsv]./(pdv.*PxdMC_1d[:, Tfirmsv] .+ pfv.*PxfMC_1d[:, Tfirmsv])
 
-a8 = mean(PxfMC_1[:, Tfirmsv])
-a9 = pfv.*mean(PxfMC_1[:, Tfirmsv])
+a8 = mean(PxfMC_1d[:, Tfirmsv])
+a9 = pfv.*mean(PxfMC_1d[:, Tfirmsv])
 a10 = mean(xf_sale[:])
 a11 = mean(xf_y[:])
 a12 =  mean(xf_inp[:])
 
-a13 = mean(PxdMC_1[:, Tfirmsv])
+a13 = mean(PxdMC_1d[:, Tfirmsv])
 a14 = mean(xd_sale[:])
 a15 = mean(xd_y[:])
 a16 =  mean(xd_inp[:])
@@ -232,13 +242,13 @@ invf_sale = ones(Nfirmsv)*(-10.0)
 invd_sale = ones(Nfirmsv)*(-10.0)
 inv_sale = ones(Nfirmsv)*(-10.0)
 
-invf_sale .= pfv.*PsfMC_1[:, Tfirmsv+1]./(PyMC_1[:, Tfirmsv].*PpMC_1[:, Tfirmsv])
-invd_sale .= pdv.*PsdMC_1[:, Tfirmsv+1]./(PyMC_1[:, Tfirmsv].*PpMC_1[:, Tfirmsv])
-inv_sale .= (pfv.*PsfMC_1[:, Tfirmsv+1].+ pdv.*PsdMC_1[:, Tfirmsv+1])./(PyMC_1[:, Tfirmsv].*PpMC_1[:, Tfirmsv])
+invf_sale .= pfv.*PsfMC_1d[:, Tfirmsv+1]./(PyMC_1d[:, Tfirmsv].*PpMC_1d[:, Tfirmsv])
+invd_sale .= pdv.*PsdMC_1d[:, Tfirmsv+1]./(PyMC_1d[:, Tfirmsv].*PpMC_1d[:, Tfirmsv])
+inv_sale .= (pfv.*PsfMC_1d[:, Tfirmsv+1].+ pdv.*PsdMC_1d[:, Tfirmsv+1])./(PyMC_1d[:, Tfirmsv].*PpMC_1d[:, Tfirmsv])
 
-invf_prod .= PsfMC_1[:, Tfirmsv+1]./(PyMC_1[:, Tfirmsv])
-invd_prod .= PsdMC_1[:, Tfirmsv+1]./(PyMC_1[:, Tfirmsv])
-inv_prod .= (PsfMC_1[:, Tfirmsv+1] .+ PsdMC_1[:, Tfirmsv+1])./(PyMC_1[:, Tfirmsv])
+invf_prod .= PsfMC_1d[:, Tfirmsv+1]./(PyMC_1d[:, Tfirmsv])
+invd_prod .= PsdMC_1d[:, Tfirmsv+1]./(PyMC_1d[:, Tfirmsv])
+inv_prod .= (PsfMC_1d[:, Tfirmsv+1] .+ PsdMC_1d[:, Tfirmsv+1])./(PyMC_1d[:, Tfirmsv])
 
 invf = ones(Nfirmsv)*(-10.0)
 invf_val = ones(Nfirmsv)*(-10.0)
@@ -246,11 +256,11 @@ invd = ones(Nfirmsv)*(-10.0)
 inv = ones(Nfirmsv)*(-10.0)
 inv_val = ones(Nfirmsv)*(-10.0)
 
-invf.= PsfMC_1[:, Tfirmsv+1]
-invf_val.= pfv.*PsfMC_1[:, Tfirmsv+1]
-invd .= PsdMC_1[:, Tfirmsv+1]
-inv .= (PsfMC_1[:, Tfirmsv+1].+ PsdMC_1[:, Tfirmsv+1])
-inv_val .= (pfv.*PsfMC_1[:, Tfirmsv+1].+ pdv.*PsdMC_1[:, Tfirmsv+1])
+invf.= PsfMC_1d[:, Tfirmsv+1]
+invf_val.= pfv.*PsfMC_1d[:, Tfirmsv+1]
+invd .= PsdMC_1d[:, Tfirmsv+1]
+inv .= (PsfMC_1d[:, Tfirmsv+1].+ PsdMC_1d[:, Tfirmsv+1])
+inv_val .= (pfv.*PsfMC_1d[:, Tfirmsv+1].+ pdv.*PsdMC_1d[:, Tfirmsv+1])
 
 a17 = mean(invf[:])
 a18 = mean(invf_val[:])
@@ -268,7 +278,7 @@ a27 = mean(inv_prod[:])
 
 @show a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21, a22, a23, a24, a25, a26, a27
 
-
+#=
 ##############################################################################################################################
 ##############################################################################################################################
 ###############################################################################################################################
