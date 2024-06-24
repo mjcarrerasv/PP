@@ -7,7 +7,16 @@
 # Code written as a funciton of n 
 
 # Algorith where the dynamic choice is solved via function (see Main_mat) for grid 
-#using Pkg; Pkg.add("Interpolations")
+ using Pkg; Pkg.add("Interpolations")
+ Pkg.add("Optim")
+ Pkg.add("Random")
+ Pkg.add("Statistics")
+ #Pkg.add("StatsFun")
+ Pkg.add("Distributions")
+ Pkg.add("NLsolve")
+ Pkg.add("StableRNGs")
+ Pkg.add("SharedArrays")
+
 
 using Distributed
 @everywhere using Interpolations, Optim, Random
@@ -115,7 +124,7 @@ parametersv = [betav, epsiv, sigmav, deltav, thv, sgridsizev, shockgridsizev];
 @time PsdMC_1d, PsfMC_1d, PpMC_1d, PyMC_1d, PxMC_1d, PxfMC_1d, PxdMC_1d, PndMC_1d, PnfMC_1d, PcaseMC_1d = 
 simulation(Pnd_1d, Pnf_1d, pdv, pfv, Nfirmsv, Tfirmsv, parametersv, shockgridv, sdgridv, sfgridv, shockMC_1d, PsdMC_1d, PsfMC_1d);
 
-
+#=
 ##############################################################################################################################
 # 2. pf change only 
 @everywhere pfv = 1.0 #1.0/1.2 #0.1
