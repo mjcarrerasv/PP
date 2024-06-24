@@ -1,0 +1,70 @@
+using Interpolations, Optim, Random
+using Statistics
+using JLD2
+using Distributions
+using NLsolve
+using FileIO
+using StableRNGs
+using Distributed
+using BenchmarkTools
+using Base.Threads
+using SharedArrays
+
+# using Pkg; Pkg.add("JULIA_NUM_THREADS")
+# using JULIA_NUM_THREADS
+addprocs(6) 
+import Base.+
++(f::Function, g::Function) = (x...) -> f(x...) + g(x...)
+
+# check number of threads
+Threads.nthreads()
+--threads 6
+
+export JULIA_NUM_THREADS=4
+
+# set number of threads: up to number of cores: 8
+@everywhere y = 2
+V = zeros(1000)
+V2 = zeros(1000)
+@time for x = 1:1000
+    V[x] = x*y
+end
+
+@time Threads.@threads for x = 1:1000
+    V2[x] = x*y
+end
+
+##
+addprocs(6) 
+@everywhere y = 2
+V = zeros(1000)
+V2 = SharedArray{Float64}(1000)
+
+@time for x = 1:1000
+    V[x] = x*y
+end
+
+@time @sync @distributed for x = 1:1000
+    V2[x] = x*y
+end
+
+###
+using BenchmarkTools
+function serial()
+    for x = 1:10
+        f = x*y
+        print(f)
+    end
+end
+
+function parallel()
+    @distributed for x = 1:10
+        f = x*y
+        print(f)
+    end
+end
+
+@banchmark serial
+@benchmark paralell
+
+
