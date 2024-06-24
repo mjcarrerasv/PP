@@ -11,7 +11,7 @@
  Pkg.add("Optim")
  Pkg.add("Random")
  Pkg.add("Statistics")
- #Pkg.add("StatsFun")
+ Pkg.add("StatsFuns")
  Pkg.add("Distributions")
  Pkg.add("NLsolve")
  Pkg.add("StableRNGs")
