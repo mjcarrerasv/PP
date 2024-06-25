@@ -189,7 +189,7 @@ shockgridv[:,2] .= lamd2v;                     # Second column: domestic deliver
 shockgridv[:,3] .= lamf2v;   
 
 @everywhere pfv = 1.0/1.2 #0.1
-=#
+
 a1 = count(<=(0.0), PcaseMC_1d[:, Tfirmsv])/Nfirmsv
 nu_mean = mean(shockgridv[:,2])
 a2 = X_mean = unconstrained_fn( nu_mean, pdv, pfv, parametersv)

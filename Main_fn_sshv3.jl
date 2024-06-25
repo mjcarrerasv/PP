@@ -7,7 +7,8 @@
 # Code written as a funciton of n 
 
 # Algorith where the dynamic choice is solved via function (see Main_mat) for grid 
- using Pkg; Pkg.add("Interpolations")
+#= 
+using Pkg; Pkg.add("Interpolations")
  Pkg.add("Optim")
  Pkg.add("Random")
  Pkg.add("Statistics")
@@ -17,7 +18,7 @@
  Pkg.add("StableRNGs")
  Pkg.add("SharedArrays")
  Pkg.add("Primes")
-
+=#
 
 using Distributed
 @everywhere using Interpolations, Optim, Random
