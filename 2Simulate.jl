@@ -123,6 +123,7 @@ end
             #@show PsdMC[n,t+1], t
             PsfMC[n,t+1] = (1-delta)*(PsfMC[n,t] + PnfMC[n,t] - X[4])
             PcaseMC[n,t] = case
+            #@show n,t, PsdMC[n,t+1], PsdMC[n,t], PndMC[n,t], X[5]
 
         end
     end

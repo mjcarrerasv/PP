@@ -106,10 +106,11 @@ end
 
     for t = 1:Tp 
        # @sync @distributed  for n = 1:Nf
-            for n = 1:Nf
+         for n = 1:Nf   
                 
             PndMC[n,t] = PolFunc(shockMC[n,t], Pnd, sdgrid, sfgrid)(PsdMC[n,t], PsfMC[n,t])
             PnfMC[n,t] = PolFunc(shockMC[n,t], Pnf, sdgrid, sfgrid)(PsdMC[n,t], PsfMC[n,t])
+            
             nu = shockgrid[shockMC[n,t], 1]
             lamd = shockgrid[shockMC[n,t], 2]
             lamf = shockgrid[shockMC[n,t], 3]
@@ -122,13 +123,14 @@ end
             PxfMC[n,t] = X[4]
             PxdMC[n,t] = X[5]   
             PsdMC[n,t+1] = (1-delta)*(PsdMC[n,t] + PndMC[n,t] - X[5])
-            #@show PsdMC[n,t+1], t
             PsfMC[n,t+1] = (1-delta)*(PsfMC[n,t] + PnfMC[n,t] - X[4])
             PcaseMC[n,t] = case
+            #@show n,t, PsdMC[n,t+1], PsdMC[n,t], PndMC[n,t], X[5]
             #@show nu,lamd, lamf, PsdMC[n,t], PsdMC[n,t+1], PndMC[n,t], X[5], PsfMC[n,t], PsfMC[n,t+1], PnfMC[n,t], X[4]
 
         end
     end
+
 
 return PsdMC, PsfMC, PpMC, PyMC, PxMC, PxfMC, PxdMC, PndMC, PnfMC, PcaseMC
 end

@@ -600,7 +600,7 @@ errorf0::Float64 = Inf
 
 
 #while iter <= max_iter && error > tol
-while iter <= max_iter && error1 > 1e-2
+while iter <= max_iter && error > 0.0009
 
 @time Tv0, Pnd0, Pnf0 = Tf_d(pd, pf, parameters, shockgrid, sdgrid, sfgrid, Tv)
 @show Pnd0[1,1,1], Pnf0[1,1,1]

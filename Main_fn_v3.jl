@@ -100,9 +100,9 @@ include("2Simulate_v2.jl")
 # 1. initial point
 nu_max = maximum(shockgridv[:,1])
 X = unconstrained_fn( nu_max, pdv, pfv, parametersv)
-sdgridmaxv = X[5]*(2.0)
+sdgridmaxv = X[5]*(1.1)
 sdgridv = collect(range(1e-10; length = sgridsizev, stop = sdgridmaxv))
-sfgridmaxv = X[4]*(2.0)
+sfgridmaxv = X[4]*(1.1)
 sfgridv = collect(range(1e-10; length = sgridsizev, stop = sfgridmaxv))
 parametersv = [betav, epsiv, sigmav, deltav, thv, sgridsizev, shockgridsizev];
 
@@ -190,6 +190,7 @@ shockgridv[:,3] .= lamf2v;
 
 @everywhere pfv = 1.0/1.2 #0.1
 
+
 a1 = count(<=(0.0), PcaseMC_1d[:, Tfirmsv])/Nfirmsv
 nu_mean = mean(shockgridv[:,2])
 a2 = X_mean = unconstrained_fn( nu_mean, pdv, pfv, parametersv)
@@ -232,6 +233,8 @@ inv_prod = ones(Nfirmsv)*(-10.0)
 invf_sale = ones(Nfirmsv)*(-10.0)
 invd_sale = ones(Nfirmsv)*(-10.0)
 inv_sale = ones(Nfirmsv)*(-10.0)
+invf_xf = ones(Nfirmsv)*(-10.0)
+invd_xd = ones(Nfirmsv)*(-10.0)
 
 invf_sale .= pfv.*PsfMC_1d[:, Tfirmsv+1]./(PyMC_1d[:, Tfirmsv].*PpMC_1d[:, Tfirmsv])
 invd_sale .= pdv.*PsdMC_1d[:, Tfirmsv+1]./(PyMC_1d[:, Tfirmsv].*PpMC_1d[:, Tfirmsv])
@@ -240,6 +243,9 @@ inv_sale .= (pfv.*PsfMC_1d[:, Tfirmsv+1].+ pdv.*PsdMC_1d[:, Tfirmsv+1])./(PyMC_1
 invf_prod .= PsfMC_1d[:, Tfirmsv+1]./(PyMC_1d[:, Tfirmsv])
 invd_prod .= PsdMC_1d[:, Tfirmsv+1]./(PyMC_1d[:, Tfirmsv])
 inv_prod .= (PsfMC_1d[:, Tfirmsv+1] .+ PsdMC_1d[:, Tfirmsv+1])./(PyMC_1d[:, Tfirmsv])
+
+invf_xf .= PsfMC_1d[:, Tfirmsv+1]./(PxfMC_1d[:, Tfirmsv])
+invd_xd .= PsdMC_1d[:, Tfirmsv+1]./(PxdMC_1d[:, Tfirmsv])
 
 invf = ones(Nfirmsv)*(-10.0)
 invf_val = ones(Nfirmsv)*(-10.0)
@@ -257,17 +263,19 @@ a17 = mean(invf[:])
 a18 = mean(invf_val[:])
 a19 = mean(invf_sale[:])
 a20 = mean(invf_prod[:])
+a21 = mean(invf_xf[:])
 
-a21 = mean(invd[:])
-a22 = mean(invd_sale[:])
-a23 = mean(invd_prod[:])
+a22 = mean(invd[:])
+a23 = mean(invd_sale[:])
+a24 = mean(invd_prod[:])
+a25 = mean(invd_xd[:])
 
-a24 = mean(inv[:])
-a25 = mean(inv_val[:])
-a26 = mean(inv_sale[:])
-a27 = mean(inv_prod[:])
+a26 = mean(inv[:])
+a27 = mean(inv_val[:])
+a28 = mean(inv_sale[:])
+a29 = mean(inv_prod[:])
 
-@show a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21, a22, a23, a24, a25, a26, a27
+@show a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21, a22, a23, a24, a25, a26, a27, s28, a29
 
 #=
 ##############################################################################################################################
