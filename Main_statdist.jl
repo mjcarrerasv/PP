@@ -11,15 +11,15 @@ shockgridv[:,3] .= lamf2v;
 @everywhere pfv = 1.0 #0.1
 @everywhere pfv = 1.0/1.2 #0.1
 
-a1 = count(<=(0.0), PcaseMC_v3[:, Tfirmsv])/Nfirmsv
+a1 = count(<=(0.0), PcaseMC_3[:, Tfirmsv])/Nfirmsv
 nu_mean = mean(shockgridv[:,2])
 a2 = X_mean = unconstrained_fn( nu_mean, pdv, pfv, parametersv)
-a3 = mean(PyMC_v3[:, Tfirmsv])
-a4 = mean(PpMC_v3[:, Tfirmsv])
+a3 = mean(PyMC_3[:, Tfirmsv])
+a4 = mean(PpMC_3[:, Tfirmsv])
 
-a5 = mean(PndMC_v3[:, Tfirmsv])
-a6 = mean(PnfMC_v3[:, Tfirmsv])
-a7 = pfv.*mean(PnfMC_v3[:, Tfirmsv])
+a5 = mean(PndMC_3[:, Tfirmsv])
+a6 = mean(PnfMC_3[:, Tfirmsv])
+a7 = pfv.*mean(PnfMC_3[:, Tfirmsv])
 
 xf_sale = ones(Nfirmsv)*(-10.0)
 xf_y = ones(Nfirmsv)*(-10.0)
@@ -28,21 +28,21 @@ xd_sale = ones(Nfirmsv)*(-10.0)
 xd_y = ones(Nfirmsv)*(-10.0)
 xd_inp = ones(Nfirmsv)*(-10.0)
 
-xf_sale .= pfv.*PxfMC_v3[:, Tfirmsv]./(PyMC_v3[:, Tfirmsv].*PpMC_v3[:, Tfirmsv])
-xf_y .= PxfMC_v3[:, Tfirmsv]./(PyMC_v3[:, Tfirmsv])
-xf_inp .= pfv.*PxfMC_v3[:, Tfirmsv]./(pdv.*PxdMC_v3[:, Tfirmsv] .+ pfv.*PxfMC_v3[:, Tfirmsv])
+xf_sale .= pfv.*PxfMC_3[:, Tfirmsv]./(PyMC_3[:, Tfirmsv].*PpMC_3[:, Tfirmsv])
+xf_y .= PxfMC_3[:, Tfirmsv]./(PyMC_3[:, Tfirmsv])
+xf_inp .= pfv.*PxfMC_3[:, Tfirmsv]./(pdv.*PxdMC_3[:, Tfirmsv] .+ pfv.*PxfMC_3[:, Tfirmsv])
 
-xd_sale .= pdv.*PxdMC_v3[:, Tfirmsv]./(PyMC_v3[:, Tfirmsv].*PpMC_v3[:, Tfirmsv])
-xd_y .= PxdMC_v3[:, Tfirmsv]./(PyMC_v3[:, Tfirmsv])
-xd_inp .= pdv.*PxdMC_v3[:, Tfirmsv]./(pdv.*PxdMC_v3[:, Tfirmsv] .+ pfv.*PxfMC_v3[:, Tfirmsv])
+xd_sale .= pdv.*PxdMC_3[:, Tfirmsv]./(PyMC_3[:, Tfirmsv].*PpMC_3[:, Tfirmsv])
+xd_y .= PxdMC_3[:, Tfirmsv]./(PyMC_3[:, Tfirmsv])
+xd_inp .= pdv.*PxdMC_3[:, Tfirmsv]./(pdv.*PxdMC_3[:, Tfirmsv] .+ pfv.*PxfMC_3[:, Tfirmsv])
 
-a8 = mean(PxfMC_v3[:, Tfirmsv])
-a9 = pfv.*mean(PxfMC_v3[:, Tfirmsv])
+a8 = mean(PxfMC_3[:, Tfirmsv])
+a9 = pfv.*mean(PxfMC_3[:, Tfirmsv])
 a10 = mean(xf_sale[:])
 a11 = mean(xf_y[:])
 a12 =  mean(xf_inp[:])
 
-a13 = mean(PxdMC_v3[:, Tfirmsv])
+a13 = mean(PxdMC_3[:, Tfirmsv])
 a14 = mean(xd_sale[:])
 a15 = mean(xd_y[:])
 a16 =  mean(xd_inp[:])
@@ -56,16 +56,16 @@ inv_sale = ones(Nfirmsv)*(-10.0)
 invf_xf = ones(Nfirmsv)*(-10.0)
 invd_xd = ones(Nfirmsv)*(-10.0)
 
-invf_sale .= pfv.*PsfMC_v3[:, Tfirmsv+1]./(PyMC_v3[:, Tfirmsv].*PpMC_v3[:, Tfirmsv])
-invd_sale .= pdv.*PsdMC_v3[:, Tfirmsv+1]./(PyMC_v3[:, Tfirmsv].*PpMC_v3[:, Tfirmsv])
-inv_sale .= (pfv.*PsfMC_v3[:, Tfirmsv+1].+ pdv.*PsdMC_v3[:, Tfirmsv+1])./(PyMC_v3[:, Tfirmsv].*PpMC_v3[:, Tfirmsv])
+invf_sale .= pfv.*PsfMC_3[:, Tfirmsv+1]./(PyMC_3[:, Tfirmsv].*PpMC_3[:, Tfirmsv])
+invd_sale .= pdv.*PsdMC_3[:, Tfirmsv+1]./(PyMC_3[:, Tfirmsv].*PpMC_3[:, Tfirmsv])
+inv_sale .= (pfv.*PsfMC_3[:, Tfirmsv+1].+ pdv.*PsdMC_3[:, Tfirmsv+1])./(PyMC_3[:, Tfirmsv].*PpMC_3[:, Tfirmsv])
 
-invf_prod .= PsfMC_v3[:, Tfirmsv+1]./(PyMC_v3[:, Tfirmsv])
-invd_prod .= PsdMC_v3[:, Tfirmsv+1]./(PyMC_v3[:, Tfirmsv])
-inv_prod .= (PsfMC_v3[:, Tfirmsv+1] .+ PsdMC_v3[:, Tfirmsv+1])./(PyMC_v3[:, Tfirmsv])
+invf_prod .= PsfMC_3[:, Tfirmsv+1]./(PyMC_3[:, Tfirmsv])
+invd_prod .= PsdMC_3[:, Tfirmsv+1]./(PyMC_3[:, Tfirmsv])
+inv_prod .= (PsfMC_3[:, Tfirmsv+1] .+ PsdMC_3[:, Tfirmsv+1])./(PyMC_3[:, Tfirmsv])
 
-invf_xf .= PsfMC_v3[:, Tfirmsv+1]./(PxfMC_v3[:, Tfirmsv])
-invd_xd .= PsdMC_v3[:, Tfirmsv+1]./(PxdMC_v3[:, Tfirmsv])
+invf_xf .= PsfMC_3[:, Tfirmsv+1]./(PxfMC_3[:, Tfirmsv])
+invd_xd .= PsdMC_3[:, Tfirmsv+1]./(PxdMC_3[:, Tfirmsv])
 
 invf = ones(Nfirmsv)*(-10.0)
 invf_val = ones(Nfirmsv)*(-10.0)
@@ -73,11 +73,11 @@ invd = ones(Nfirmsv)*(-10.0)
 inv = ones(Nfirmsv)*(-10.0)
 inv_val = ones(Nfirmsv)*(-10.0)
 
-invf.= PsfMC_v3[:, Tfirmsv+1]
-invf_val.= pfv.*PsfMC_v3[:, Tfirmsv+1]
-invd .= PsdMC_v3[:, Tfirmsv+1]
-inv .= (PsfMC_v3[:, Tfirmsv+1].+ PsdMC_v3[:, Tfirmsv+1])
-inv_val .= (pfv.*PsfMC_v3[:, Tfirmsv+1].+ pdv.*PsdMC_v3[:, Tfirmsv+1])
+invf.= PsfMC_3[:, Tfirmsv+1]
+invf_val.= pfv.*PsfMC_3[:, Tfirmsv+1]
+invd .= PsdMC_3[:, Tfirmsv+1]
+inv .= (PsfMC_3[:, Tfirmsv+1].+ PsdMC_3[:, Tfirmsv+1])
+inv_val .= (pfv.*PsfMC_3[:, Tfirmsv+1].+ pdv.*PsdMC_3[:, Tfirmsv+1])
 
 a17 = mean(invf[:])
 a18 = mean(invf_val[:])
