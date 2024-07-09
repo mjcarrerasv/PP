@@ -284,3 +284,164 @@ a29 = mean(inv_prod[:])
 
 return  a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21, a22, a23, a24, a25, a26, a27, a28, a29
 end
+
+##############################################################################################################################
+@everywhere function moments_initial(
+                                    pd0::Float64,
+                                    pf0::Float64,
+                                    parameters0::Array{Float64},
+                                    shockgrid0::Array{Float64},
+                                    sdgrid0::Array{Float64},
+                                    sfgrid0::Array{Float64},
+                                    sigma_nu0::Float64,
+                                    Nfirms0::Int64,
+                                    Tperiod0::Int64,
+                                    #data moments
+                                    invdata0::Float64,
+                                    impdata0::Float64
+                                    )
+
+parameters = ones(7)
+parameters::Array{Float64} .= parameters0    
+shockgridsize::Int64 = Int(parameters[7])
+shockgrid = zeros(shockgridsize, 3) 
+shockgrid::Array{Float64} .= shockgrid0  
+sgridsize::Int64 = Int(parameters[6])
+sdgrid::Array{Float64} = ones(sgridsize)
+sdgrid .= sdgrid0
+sfgrid::Array{Float64} = ones(sgridsize)
+sfgrid .= sfgrid0
+
+pd::Float64 = pd0                                       
+pf::Float64 = pf0   
+Nfirms::Int64 = Nfirms0
+Tperiod::Int64 = Tperiod0
+
+invdata::Float64 =invdata0
+impdata::Float64 = impdata0
+
+Tv::Array{Float64} = ones(sgridsize, sgridsize)
+Pnd::Array{Float64} = ones(sgridsize, sgridsize)
+Pnf::Array{Float64} = ones(sgridsize, sgridsize)
+
+iter::Int64 = 0
+max_iter::Int64 = 70
+tol::Float64 = 1e-3
+nu_tol::Float64 = 1e-3
+th_tol::Float64 = 1e-3
+error::Float64 = Inf
+error_inv::Float64 = Inf
+error_imp::Float64 = Inf
+
+th_min::Float64 = 0.0001
+th_max::Float64 = 0.999
+th_new::Float64 = 0.5
+
+nu_min::Float64 = 0.0001
+nu_max::Float64 = 2.0
+nu_new::Float64 = 0.5
+
+mean_dem::Float64 = 1.0
+nu::Float64 = sigma_nu0
+th::Float64 = parameters[5]
+#parametersv = [betav, epsiv, sigmav, deltav, thv, sgridsizev, shockgridsizev];
+
+while iter <= max_iter && error > tol
+
+        ### OBTAIN EQUILIBRIUM 
+        parameters = [beta, epsi, sigma, delta, th, sgridsize, shockgridsize]
+        nu_vec = nu_grid(shockgridsize, mean_dem, nu)
+        shockgrid[:,1] .= nu_vec[:]                    # Second column is for demand shocks, First column is for delivery time shocks
+        @show shockgrid[1:10,1], nu, th
+
+        nu_max = maximum(shockgrid[:,1])
+        X = unconstrained_fn( nu_max, pd, pf, parameters)
+        sdgridmax = X[5]*(1.1)
+        sdgrid = collect(range(1e-10; length = sgridsize, stop = sdgridmax))
+        sfgridmax = X[4]*(1.1)
+        sfgrid = collect(range(1e-10; length = sgridsize, stop = sfgridmax))
+
+        #1 Obtain VF and policy functions for orders
+        @time Tv, Pnd, Pnf = Vfn_d(pd, pf, parameters, shockgrid, sdgrid, sfgrid);
+
+        #2 Obtain other policy functions: function of stochastic shocks
+        #Pp, Py, Px, Pxf, Pxd, Psdp, Psfp, Pcase = policies(Pnd, Pnf, pd, pf, parameters, shockgrid, sdgrid, sfgrid);
+
+        #3 Obtain stationary distribution
+        shockMC, PsdMC, PsfMC = sim_initial(Nfirms, Tfirms, parameters, sdgrid, sfgrid);
+         PsdMC, PsfMC, PpMC, PyMC, PxMC, PxfMC, PxdMC, PndMC, PnfMC, PcaseMC = 
+        simulation(Pnd, Pnf, pd, pf, Nfirms, Tfirms, parameters, shockgrid, sdgrid, sfgrid, shockMC, PsdMC, PsfMC);
+
+        #4 Obtain moments of the stationary distribution
+        Moments = stat_dist(pdv, pfv, Nfirmsv, Tfirmsv, parametersv, shockgridv, PsdMC, PsfMC, PpMC, PyMC, PxMC, PxfMC, PxdMC, PndMC, PnfMC, PcaseMC)
+
+        ### CHECK WITH DATA
+        inv_sale = Moments[28] 
+        inv_prod = Moments[29] 
+        xf_sale = Moments[10] 
+        xd_sale = Moments[14] 
+        xf_inp = Moments[12] 
+
+        ### UPDATE Parameters: theta and sigma_nu
+        error_inv = inv_sale - invdata
+        error_imp = xf_inp - impdata
+        error = max(abs(error_inv), abs(error_imp))
+
+        if error_inv > nu_tol
+            nu_max = nu
+            if nu_min > 0.0001
+              nu_new = (nu_min + nu_max)/2
+            else
+              nu_new = nu - 0.01
+            end
+
+        elseif error_inv < -1*nu_tol
+            nu_min = th
+             if nu_max < 2.0
+               nu_new = (nu_min + nu_max)/2
+             else
+               nu_new = nu + 0.01
+             end
+
+        elseif error_inv < nu_tol && error_inv < -1*nu_tol
+             error_inv = 0.0
+             nu_new = nu
+        end
+
+         @show inv_sale, inv_prod, invdata, error_inv, nu_min, nu_max, nu, nu_new
+
+        if error_imp < -1*th_tol
+            th_max = th
+            if th_min > 0.0001
+              th_new = (th_min + th_max)/2
+            else
+              th_new = th - 0.05
+            end
+
+        elseif error_imp > th_tol
+            th_min = th
+             if th_max < 0.999
+               th_new = (th_min + th_max)/2
+             else
+               th_new = th + 0.05
+             end
+
+        elseif error_imp < th_tol && error_imp < -1*th_tol
+             error_imp = 0.0
+             th_new = th
+        end
+        
+        @show  xf_sale, xd_sale, xf_inp, impdata, error_imp, th_min, th_max, th_new
+
+        @show iter, error
+        th = th_new
+        nu = nu_new
+        iter += 1
+
+end
+
+return Tv, Pnd, Pnf 
+
+end
+
+

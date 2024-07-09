@@ -76,7 +76,7 @@ histogram!(lamfv)
 =#
 
 mean_dem = 1.0
-sig_dem = 0.30 #1.2 #0.50 #0.38
+sig_dem = 0.28 #1.2 #0.50 #0.38
 nu = nu_grid(shockgridsizev, mean_dem, sig_dem)
 shockgridv[:,1] .= nu[:]                    # Second column is for demand shocks, First column is for delivery time shocks
 
@@ -87,7 +87,7 @@ shockgridv[:,1] .= nu[:]                    # Second column is for demand shocks
 @everywhere betav = (1-0.04)^(1/4)  
 @everywhere epsiv = 4.0 #4.0 #1.5                               # demand elasticity
 @everywhere sigmav = 2.5 #2.5 #2.5 #1.5  #4.0 #0.8                              # input elasticity
-@everywhere thv = 0.775 #0.9110 #0.5                       # domestic input weight 
+@everywhere thv = 0.785 #0.9110 #0.5                       # domestic input weight 
 @everywhere deltav = 0.30/4    #0.01                        # depreciation rate
 
 @everywhere parametersv = [betav, epsiv, sigmav, deltav, thv, sgridsizev, shockgridsizev]
@@ -96,8 +96,33 @@ shockgridv[:,1] .= nu[:]                    # Second column is for demand shocks
 Nfirmsv = 50000                          # number of firms
 Tfirmsv = 200                         # number of periods
 
+# data moments
+xf_sales_ini =	0.09303
+xd_sales_ini =	0.26561
+xf_totimp_ini = 0.25940
+inv_sales_ini = 0.28792
+
+xf_sales_fin =	0.052974
+xd_sales_fin =	0.307438
+xf_totimp_fin = 0.146981800
+inv_sales_fin = 0.320851
+
 include("1Value_fn_v1.jl")
 include("2Simulate_v1.jl")
+
+##############################################################################################################################
+# 1. Initial calibration
+nu_max = maximum(shockgridv[:,1])
+X = unconstrained_fn( nu_max, pdv, pfv, parametersv)
+sdgridmaxv = X[5]*(1.1)
+sdgridv = collect(range(1e-10; length = sgridsizev, stop = sdgridmaxv))
+sfgridmaxv = X[4]*(1.1)
+sfgridv = collect(range(1e-10; length = sgridsizev, stop = sfgridmaxv))
+parametersv = [betav, epsiv, sigmav, deltav, thv, sgridsizev, shockgridsizev];
+
+
+@time Tv_1, Pnd_1, Pnf_1 = moments_initial(pdv, pfv, parametersv, shockgridv, sdgridv, sfgridv, sig_dem, Nfirmsv, Tfirmsv, inv_sales_ini, xf_totimp_ini)
+
 
 ##############################################################################################################################
 # 1. initial point
@@ -143,7 +168,7 @@ sdgridv = collect(range(1e-10; length = sgridsizev, stop = sdgridmaxv))
 sfgridmaxv = X[4]*(1.1)
 sfgridv = collect(range(1e-10; length = sgridsizev, stop = sfgridmaxv))
 parametersv = [betav, epsiv, sigmav, deltav, thv, sgridsizev, shockgridsizev];
-=#
+#
 
 @show "price change", lamd2v, lamf2v, pfv, sdgridmaxv, sfgridmaxv, nu_max
 @show shockgridv
@@ -205,380 +230,3 @@ parametersv = [betav, epsiv, sigmav, deltav, thv, sgridsizev, shockgridsizev];
 @time PsdMC_3, PsfMC_3, PpMC_3, PyMC_3, PxMC_3, PxfMC_3, PxdMC_3, PndMC_3, PnfMC_3, PcaseMC_3 = 
 simulation(Pnd_3, Pnf_3, pdv, pfv, Nfirmsv, Tfirmsv, parametersv, shockgridv, sdgridv, sfgridv, shockMC_3, PsdMC_3, PsfMC_3);
 
-
-##############################################################################################################################
-##############################################################################################################################
-###############################################################################################################################
-# 1. initial point
-lamd2v = (TTv - dayd_meanv)/TTv
-lamf2v = (TTv - dayf_meanv)/TTv
-shockgridv[:,2] .= lamd2v;                     # Second column: domestic delivery times 
-shockgridv[:,3] .= lamf2v;   
-
-@everywhere pfv = 1.0/1.2 #0.1
-=#
-a1 = count(<=(0.0), PcaseMC_1d[:, Tfirmsv])/Nfirmsv
-nu_mean = mean(shockgridv[:,2])
-a2 = X_mean = unconstrained_fn( nu_mean, pdv, pfv, parametersv)
-a3 = mean(PyMC_1d[:, Tfirmsv])
-a4 = mean(PpMC_1d[:, Tfirmsv])
-
-a5 = mean(PndMC_1d[:, Tfirmsv])
-a6 = mean(PnfMC_1d[:, Tfirmsv])
-a7 = pfv.*mean(PnfMC_1d[:, Tfirmsv])
-
-xf_sale = ones(Nfirmsv)*(-10.0)
-xf_y = ones(Nfirmsv)*(-10.0)
-xf_inp = ones(Nfirmsv)*(-10.0)
-xd_sale = ones(Nfirmsv)*(-10.0)
-xd_y = ones(Nfirmsv)*(-10.0)
-xd_inp = ones(Nfirmsv)*(-10.0)
-
-xf_sale .= pfv.*PxfMC_1d[:, Tfirmsv]./(PyMC_1d[:, Tfirmsv].*PpMC_1d[:, Tfirmsv])
-xf_y .= PxfMC_1d[:, Tfirmsv]./(PyMC_1d[:, Tfirmsv])
-xf_inp .= pfv.*PxfMC_1d[:, Tfirmsv]./(pdv.*PxdMC_1d[:, Tfirmsv] .+ pfv.*PxfMC_1d[:, Tfirmsv])
-
-xd_sale .= pdv.*PxdMC_1d[:, Tfirmsv]./(PyMC_1d[:, Tfirmsv].*PpMC_1d[:, Tfirmsv])
-xd_y .= PxdMC_1d[:, Tfirmsv]./(PyMC_1d[:, Tfirmsv])
-xd_inp .= pdv.*PxdMC_1d[:, Tfirmsv]./(pdv.*PxdMC_1d[:, Tfirmsv] .+ pfv.*PxfMC_1d[:, Tfirmsv])
-
-a8 = mean(PxfMC_1d[:, Tfirmsv])
-a9 = pfv.*mean(PxfMC_1d[:, Tfirmsv])
-a10 = mean(xf_sale[:])
-a11 = mean(xf_y[:])
-a12 =  mean(xf_inp[:])
-
-a13 = mean(PxdMC_1d[:, Tfirmsv])
-a14 = mean(xd_sale[:])
-a15 = mean(xd_y[:])
-a16 =  mean(xd_inp[:])
-
-invf_prod = ones(Nfirmsv)*(-10.0)
-invd_prod = ones(Nfirmsv)*(-10.0)
-inv_prod = ones(Nfirmsv)*(-10.0)
-invf_sale = ones(Nfirmsv)*(-10.0)
-invd_sale = ones(Nfirmsv)*(-10.0)
-inv_sale = ones(Nfirmsv)*(-10.0)
-invf_xf = ones(Nfirmsv)*(-10.0)
-invd_xd = ones(Nfirmsv)*(-10.0)
-
-invf_sale .= pfv.*PsfMC_1d[:, Tfirmsv+1]./(PyMC_1d[:, Tfirmsv].*PpMC_1d[:, Tfirmsv])
-invd_sale .= pdv.*PsdMC_1d[:, Tfirmsv+1]./(PyMC_1d[:, Tfirmsv].*PpMC_1d[:, Tfirmsv])
-inv_sale .= (pfv.*PsfMC_1d[:, Tfirmsv+1].+ pdv.*PsdMC_1d[:, Tfirmsv+1])./(PyMC_1d[:, Tfirmsv].*PpMC_1d[:, Tfirmsv])
-
-invf_prod .= PsfMC_1d[:, Tfirmsv+1]./(PyMC_1d[:, Tfirmsv])
-invd_prod .= PsdMC_1d[:, Tfirmsv+1]./(PyMC_1d[:, Tfirmsv])
-inv_prod .= (PsfMC_1d[:, Tfirmsv+1] .+ PsdMC_1d[:, Tfirmsv+1])./(PyMC_1d[:, Tfirmsv])
-
-invf_xf .= PsfMC_1d[:, Tfirmsv+1]./(PxfMC_1d[:, Tfirmsv])
-invd_xd .= PsdMC_1d[:, Tfirmsv+1]./(PxdMC_1d[:, Tfirmsv])
-
-invf = ones(Nfirmsv)*(-10.0)
-invf_val = ones(Nfirmsv)*(-10.0)
-invd = ones(Nfirmsv)*(-10.0)
-inv = ones(Nfirmsv)*(-10.0)
-inv_val = ones(Nfirmsv)*(-10.0)
-
-invf.= PsfMC_1d[:, Tfirmsv+1]
-invf_val.= pfv.*PsfMC_1d[:, Tfirmsv+1]
-invd .= PsdMC_1d[:, Tfirmsv+1]
-inv .= (PsfMC_1d[:, Tfirmsv+1].+ PsdMC_1d[:, Tfirmsv+1])
-inv_val .= (pfv.*PsfMC_1d[:, Tfirmsv+1].+ pdv.*PsdMC_1d[:, Tfirmsv+1])
-
-a17 = mean(invf[:])
-a18 = mean(invf_val[:])
-a19 = mean(invf_sale[:])
-a20 = mean(invf_prod[:])
-a21 = mean(invf_xf[:])
-
-a22 = mean(invd[:])
-a23 = mean(invd_sale[:])
-a24 = mean(invd_prod[:])
-a25 = mean(invd_xd[:])
-
-a26 = mean(inv[:])
-a27 = mean(inv_val[:])
-a28 = mean(inv_sale[:])
-a29 = mean(inv_prod[:])
-
-@show a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21, a22, a23, a24, a25, a26, a27, s28, a29
-
-#=
-##############################################################################################################################
-##############################################################################################################################
-###############################################################################################################################
-# 2. pf change only 
-lamd2v = (TTv - dayd_meanv)/TTv
-lamf2v = (TTv - dayf_meanv)/TTv
-shockgridv[:,2] .= lamd2v;                     # Second column: domestic delivery times 
-shockgridv[:,3] .= lamf2v;   
-
-@everywhere pfv = 1.0 #1.0/1.2 #0.1
-
-a1 = count(<=(0.0), PcaseMC_2[:, Tfirmsv])/Nfirmsv
-nu_mean = mean(shockgridv[:,2])
-a2 = X_mean = unconstrained_fn( nu_mean, pdv, pfv, parametersv)
-a3 = mean(PyMC_2[:, Tfirmsv])
-a4 = mean(PpMC_2[:, Tfirmsv])
-
-a5 = mean(PndMC_2[:, Tfirmsv])
-a6 = mean(PnfMC_2[:, Tfirmsv])
-a7 = pfv.*mean(PnfMC_2[:, Tfirmsv])
-
-xf_sale = ones(Nfirmsv)*(-10.0)
-xf_y = ones(Nfirmsv)*(-10.0)
-xf_inp = ones(Nfirmsv)*(-10.0)
-xd_sale = ones(Nfirmsv)*(-10.0)
-xd_y = ones(Nfirmsv)*(-10.0)
-xd_inp = ones(Nfirmsv)*(-10.0)
-
-xf_sale .= pfv.*PxfMC_2[:, Tfirmsv]./(PyMC_2[:, Tfirmsv].*PpMC_2[:, Tfirmsv])
-xf_y .= PxfMC_2[:, Tfirmsv]./(PyMC_2[:, Tfirmsv])
-xf_inp .= pfv.*PxfMC_2[:, Tfirmsv]./(pdv.*PxdMC_2[:, Tfirmsv] .+ pfv.*PxfMC_2[:, Tfirmsv])
-
-xd_sale .= pdv.*PxdMC_2[:, Tfirmsv]./(PyMC_2[:, Tfirmsv].*PpMC_2[:, Tfirmsv])
-xd_y .= PxdMC_2[:, Tfirmsv]./(PyMC_2[:, Tfirmsv])
-xd_inp .= pdv.*PxdMC_2[:, Tfirmsv]./(pdv.*PxdMC_2[:, Tfirmsv] .+ pfv.*PxfMC_2[:, Tfirmsv])
-
-a8 = mean(PxfMC_2[:, Tfirmsv])
-a9 = pfv.*mean(PxfMC_2[:, Tfirmsv])
-a10 = mean(xf_sale[:])
-a11 = mean(xf_y[:])
-a12 =  mean(xf_inp[:])
-
-a13 = mean(PxdMC_2[:, Tfirmsv])
-a14 = mean(xd_sale[:])
-a15 = mean(xd_y[:])
-a16 =  mean(xd_inp[:])
-
-invf_prod = ones(Nfirmsv)*(-10.0)
-invd_prod = ones(Nfirmsv)*(-10.0)
-inv_prod = ones(Nfirmsv)*(-10.0)
-invf_sale = ones(Nfirmsv)*(-10.0)
-invd_sale = ones(Nfirmsv)*(-10.0)
-inv_sale = ones(Nfirmsv)*(-10.0)
-
-invf_sale .= pfv.*PsfMC_2[:, Tfirmsv+1]./(PyMC_2[:, Tfirmsv].*PpMC_2[:, Tfirmsv])
-invd_sale .= pdv.*PsdMC_2[:, Tfirmsv+1]./(PyMC_2[:, Tfirmsv].*PpMC_2[:, Tfirmsv])
-inv_sale .= (pfv.*PsfMC_2[:, Tfirmsv+1].+ pdv.*PsdMC_2[:, Tfirmsv+1])./(PyMC_2[:, Tfirmsv].*PpMC_2[:, Tfirmsv])
-
-invf_prod .= PsfMC_2[:, Tfirmsv+1]./(PyMC_2[:, Tfirmsv])
-invd_prod .= PsdMC_2[:, Tfirmsv+1]./(PyMC_2[:, Tfirmsv])
-inv_prod .= (PsfMC_2[:, Tfirmsv+1] .+ PsdMC_2[:, Tfirmsv+1])./(PyMC_2[:, Tfirmsv])
-
-invf = ones(Nfirmsv)*(-10.0)
-invf_val = ones(Nfirmsv)*(-10.0)
-invd = ones(Nfirmsv)*(-10.0)
-inv = ones(Nfirmsv)*(-10.0)
-inv_val = ones(Nfirmsv)*(-10.0)
-
-invf.= PsfMC_2[:, Tfirmsv+1]
-invf_val.= pfv.*PsfMC_2[:, Tfirmsv+1]
-invd .= PsdMC_2[:, Tfirmsv+1]
-inv .= (PsfMC_2[:, Tfirmsv+1].+ PsdMC_2[:, Tfirmsv+1])
-inv_val .= (pfv.*PsfMC_2[:, Tfirmsv+1].+ pdv.*PsdMC_2[:, Tfirmsv+1])
-
-a17 = mean(invf[:])
-a18 = mean(invf_val[:])
-a19 = mean(invf_sale[:])
-a20 = mean(invf_prod[:])
-
-
-a21 = mean(invd[:])
-a22 = mean(invd_sale[:])
-a23 = mean(invd_prod[:])
-
-a24 = mean(inv[:])
-a25 = mean(inv_val[:])
-a26 = mean(inv_sale[:])
-a27 = mean(inv_prod[:])
-
-@show a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21, a22, a23, a24, a25, a26, a27
-
-
-##############################################################################################################################
-##############################################################################################################################
-###############################################################################################################################
-# 3. increase in uncertainty 
-@everywhere pfv = 1.0 #1.0/1.2 #0.1
-
-dayd_meanv = 10.0 + 14.0
-dayd_delayv = 40.0 #30.0 # 20, 60, 100                  # domestic delivery times is second column
-dayf_meanv = 35.0 + 14.0
-dayf_delayv = 40.0 #30.0 # 20, 60, 100
-lamdv, dayd = lam_grid3(shockgridsizev, dayd_meanv, dayd_delayv, TTv, lamd2v)
-lamfv, dayf = lam_grid3(shockgridsizev, dayf_meanv, dayf_delayv, TTv, lamf2v)
-shockgridv[:,2] .= lamdv[:];                    # Second column: domestic delivery times 
-shockgridv[:,3] .= lamfv[:];  
-
-a1 = count(<=(0.0), PcaseMC_3[:, Tfirmsv])/Nfirmsv
-nu_mean = mean(shockgridv[:,2])
-a2 = X_mean = unconstrained_fn( nu_mean, pdv, pfv, parametersv)
-a3 = mean(PyMC_3[:, Tfirmsv])
-a4 = mean(PpMC_3[:, Tfirmsv])
-
-a5 = mean(PndMC_3[:, Tfirmsv])
-a6 = mean(PnfMC_3[:, Tfirmsv])
-a7 = pfv.*mean(PnfMC_3[:, Tfirmsv])
-
-xf_sale = ones(Nfirmsv)*(-10.0)
-xf_y = ones(Nfirmsv)*(-10.0)
-xf_inp = ones(Nfirmsv)*(-10.0)
-xd_sale = ones(Nfirmsv)*(-10.0)
-xd_y = ones(Nfirmsv)*(-10.0)
-xd_inp = ones(Nfirmsv)*(-10.0)
-
-xf_sale .= pfv.*PxfMC_3[:, Tfirmsv]./(PyMC_3[:, Tfirmsv].*PpMC_3[:, Tfirmsv])
-xf_y .= PxfMC_3[:, Tfirmsv]./(PyMC_3[:, Tfirmsv])
-xf_inp .= pfv.*PxfMC_3[:, Tfirmsv]./(pdv.*PxdMC_3[:, Tfirmsv] .+ pfv.*PxfMC_3[:, Tfirmsv])
-
-xd_sale .= pdv.*PxdMC_3[:, Tfirmsv]./(PyMC_3[:, Tfirmsv].*PpMC_3[:, Tfirmsv])
-xd_y .= PxdMC_3[:, Tfirmsv]./(PyMC_3[:, Tfirmsv])
-xd_inp .= pdv.*PxdMC_3[:, Tfirmsv]./(pdv.*PxdMC_3[:, Tfirmsv] .+ pfv.*PxfMC_3[:, Tfirmsv])
-
-a8 = mean(PxfMC_3[:, Tfirmsv])
-a9 = pfv.*mean(PxfMC_3[:, Tfirmsv])
-a10 = mean(xf_sale[:])
-a11 = mean(xf_y[:])
-a12 =  mean(xf_inp[:])
-
-a13 = mean(PxdMC_3[:, Tfirmsv])
-a14 = mean(xd_sale[:])
-a15 = mean(xd_y[:])
-a16 =  mean(xd_inp[:])
-
-invf_prod = ones(Nfirmsv)*(-10.0)
-invd_prod = ones(Nfirmsv)*(-10.0)
-inv_prod = ones(Nfirmsv)*(-10.0)
-invf_sale = ones(Nfirmsv)*(-10.0)
-invd_sale = ones(Nfirmsv)*(-10.0)
-inv_sale = ones(Nfirmsv)*(-10.0)
-
-invf_sale .= pfv.*PsfMC_3[:, Tfirmsv+1]./(PyMC_3[:, Tfirmsv].*PpMC_3[:, Tfirmsv])
-invd_sale .= pdv.*PsdMC_3[:, Tfirmsv+1]./(PyMC_3[:, Tfirmsv].*PpMC_3[:, Tfirmsv])
-inv_sale .= (pfv.*PsfMC_3[:, Tfirmsv+1].+ pdv.*PsdMC_3[:, Tfirmsv+1])./(PyMC_3[:, Tfirmsv].*PpMC_3[:, Tfirmsv])
-
-invf_prod .= PsfMC_3[:, Tfirmsv+1]./(PyMC_3[:, Tfirmsv])
-invd_prod .= PsdMC_3[:, Tfirmsv+1]./(PyMC_3[:, Tfirmsv])
-inv_prod .= (PsfMC_3[:, Tfirmsv+1] .+ PsdMC_3[:, Tfirmsv+1])./(PyMC_3[:, Tfirmsv])
-
-invf = ones(Nfirmsv)*(-10.0)
-invf_val = ones(Nfirmsv)*(-10.0)
-invd = ones(Nfirmsv)*(-10.0)
-inv = ones(Nfirmsv)*(-10.0)
-inv_val = ones(Nfirmsv)*(-10.0)
-
-invf.= PsfMC_3[:, Tfirmsv+1]
-invf_val.= pfv.*PsfMC_3[:, Tfirmsv+1]
-invd .= PsdMC_3[:, Tfirmsv+1]
-inv .= (PsfMC_3[:, Tfirmsv+1].+ PsdMC_3[:, Tfirmsv+1])
-inv_val .= (pfv.*PsfMC_3[:, Tfirmsv+1].+ pdv.*PsdMC_3[:, Tfirmsv+1])
-
-a17 = mean(invf[:])
-a18 = mean(invf_val[:])
-a19 = mean(invf_sale[:])
-a20 = mean(invf_prod[:])
-
-
-a21 = mean(invd[:])
-a22 = mean(invd_sale[:])
-a23 = mean(invd_prod[:])
-
-a24 = mean(inv[:])
-a25 = mean(inv_val[:])
-a26 = mean(inv_sale[:])
-a27 = mean(inv_prod[:])
-
-@show a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21, a22, a23, a24, a25, a26, a27
-
-
-
-##############################################################################################################################
-##############################################################################################################################
-###############################################################################################################################
-# 1. initial point
-lamd2v = (TTv - dayd_meanv)/TTv
-lamf2v = (TTv - dayf_meanv)/TTv
-shockgridv[:,2] .= lamd2v;                     # Second column: domestic delivery times 
-shockgridv[:,3] .= lamf2v;   
-
-@everywhere pfv = 1.0/1.2 #0.1
-
-a1 = count(<=(0.0), PcaseMC_1b[:, Tfirmsv])/Nfirmsv
-nu_mean = mean(shockgridv[:,2])
-a2 = X_mean = unconstrained_fn( nu_mean, pdv, pfv, parametersv)
-a3 = mean(PyMC_1b[:, Tfirmsv])
-a4 = mean(PpMC_1b[:, Tfirmsv])
-
-a5 = mean(PndMC_1b[:, Tfirmsv])
-a6 = mean(PnfMC_1b[:, Tfirmsv])
-a7 = pfv.*mean(PnfMC_1b[:, Tfirmsv])
-
-xf_sale = ones(Nfirmsv)*(-10.0)
-xf_y = ones(Nfirmsv)*(-10.0)
-xf_inp = ones(Nfirmsv)*(-10.0)
-xd_sale = ones(Nfirmsv)*(-10.0)
-xd_y = ones(Nfirmsv)*(-10.0)
-xd_inp = ones(Nfirmsv)*(-10.0)
-
-xf_sale .= pfv.*PxfMC_1b[:, Tfirmsv]./(PyMC_1b[:, Tfirmsv].*PpMC_1b[:, Tfirmsv])
-xf_y .= PxfMC_1b[:, Tfirmsv]./(PyMC_1b[:, Tfirmsv])
-xf_inp .= pfv.*PxfMC_1b[:, Tfirmsv]./(pdv.*PxdMC_1b[:, Tfirmsv] .+ pfv.*PxfMC_1b[:, Tfirmsv])
-
-xd_sale .= pdv.*PxdMC_1b[:, Tfirmsv]./(PyMC_1b[:, Tfirmsv].*PpMC_1[:, Tfirmsv])
-xd_y .= PxdMC_1b[:, Tfirmsv]./(PyMC_1b[:, Tfirmsv])
-xd_inp .= pdv.*PxdMC_1b[:, Tfirmsv]./(pdv.*PxdMC_1b[:, Tfirmsv] .+ pfv.*PxfMC_1b[:, Tfirmsv])
-
-a8 = mean(PxfMC_1b[:, Tfirmsv])
-a9 = pfv.*mean(PxfMC_1b[:, Tfirmsv])
-a10 = mean(xf_sale[:])
-a11 = mean(xf_y[:])
-a12 =  mean(xf_inp[:])
-
-a13 = mean(PxdMC_1b[:, Tfirmsv])
-a14 = mean(xd_sale[:])
-a15 = mean(xd_y[:])
-a16 =  mean(xd_inp[:])
-
-invf_prod = ones(Nfirmsv)*(-10.0)
-invd_prod = ones(Nfirmsv)*(-10.0)
-inv_prod = ones(Nfirmsv)*(-10.0)
-invf_sale = ones(Nfirmsv)*(-10.0)
-invd_sale = ones(Nfirmsv)*(-10.0)
-inv_sale = ones(Nfirmsv)*(-10.0)
-
-invf_sale .= pfv.*PsfMC_1b[:, Tfirmsv+1]./(PyMC_1b[:, Tfirmsv].*PpMC_1b[:, Tfirmsv])
-invd_sale .= pdv.*PsdMC_1b[:, Tfirmsv+1]./(PyMC_1b[:, Tfirmsv].*PpMC_1b[:, Tfirmsv])
-inv_sale .= (pfv.*PsfMC_1b[:, Tfirmsv+1].+ pdv.*PsdMC_1b[:, Tfirmsv+1])./(PyMC_1b[:, Tfirmsv].*PpMC_1b[:, Tfirmsv])
-
-invf_prod .= PsfMC_1b[:, Tfirmsv+1]./(PyMC_1b[:, Tfirmsv])
-invd_prod .= PsdMC_1b[:, Tfirmsv+1]./(PyMC_1b[:, Tfirmsv])
-inv_prod .= (PsfMC_1b[:, Tfirmsv+1] .+ PsdMC_1b[:, Tfirmsv+1])./(PyMC_1b[:, Tfirmsv])
-
-invf = ones(Nfirmsv)*(-10.0)
-invf_val = ones(Nfirmsv)*(-10.0)
-invd = ones(Nfirmsv)*(-10.0)
-inv = ones(Nfirmsv)*(-10.0)
-inv_val = ones(Nfirmsv)*(-10.0)
-
-invf.= PsfMC_1[:, Tfirmsv+1]
-invf_val.= pfv.*PsfMC_1[:, Tfirmsv+1]
-invd .= PsdMC_1[:, Tfirmsv+1]
-inv .= (PsfMC_1[:, Tfirmsv+1].+ PsdMC_1[:, Tfirmsv+1])
-inv_val .= (pfv.*PsfMC_1[:, Tfirmsv+1].+ pdv.*PsdMC_1[:, Tfirmsv+1])
-
-a17 = mean(invf[:])
-a18 = mean(invf_val[:])
-a19 = mean(invf_sale[:])
-a20 = mean(invf_prod[:])
-
-a21 = mean(invd[:])
-a22 = mean(invd_sale[:])
-a23 = mean(invd_prod[:])
-
-a24 = mean(inv[:])
-a25 = mean(inv_val[:])
-a26 = mean(inv_sale[:])
-a27 = mean(inv_prod[:])
-
-@show a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21, a22, a23, a24, a25, a26, a27
